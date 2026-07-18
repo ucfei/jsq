@@ -3,105 +3,170 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JSQ - XLSX数据页面</title>
-  <!-- SheetJS Excel解析CDN -->
+  <title>窗帘孔距查询表</title>
+  <!-- Excel解析库CDN -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      font-family: "Microsoft Yahei", sans-serif;
     }
     body {
-      padding: 20px;
-      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 0 15px;
     }
-    h2 {
-      margin-bottom: 16px;
+    h1 {
+      text-align: center;
       color: #222;
+      margin-bottom: 25px;
+      font-size: 24px;
     }
-    #loading {
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    #widthInput {
+      flex: 1;
+      padding: 12px 15px;
       font-size: 16px;
-      color: #666;
-      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      outline: none;
     }
+    #searchBtn {
+      padding: 12px 24px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #searchBtn:hover {
+      background: #1d4ed8;
+    }
+    #tip {
+      margin: 10px 0;
+      font-size: 15px;
+      min-height: 22px;
+    }
+    .success { color: #039442; }
+    .error { color: #dc2626; }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
     }
     th, td {
       border: 1px solid #ddd;
-      padding: 10px 12px;
-      text-align: left;
+      padding: 12px;
+      text-align: center;
+      font-size: 15px;
     }
     th {
-      background-color: #f0f4f8;
-    }
-    tr:nth-child(even) {
-      background-color: #f9fafc;
+      background-color: #eff6ff;
     }
   </style>
 </head>
 <body>
-  <h2>表格数据（读取仓库data.xlsx）</h2>
-  <div id="loading">正在加载Excel数据库文件 data.xlsx...</div>
-  <table id="dataTable"></table>
+  <h1>窗帘孔距完整对照表查询</h1>
+
+  <!-- 查询输入区域 -->
+  <div class="search-box">
+    <input type="number" id="widthInput" placeholder="请输入窗帘宽度（单位cm，例如180）">
+    <button id="searchBtn">查询孔距</button>
+  </div>
+
+  <!-- 提示信息：加载/成功/报错 -->
+  <div id="tip" class="error">正在加载数据库 data.xlsx...</div>
+
+  <!-- 查询结果表格 -->
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th>宽度(cm)</th>
+        <th>孔数</th>
+        <th>孔距(cm)</th>
+        <th>单边边距(cm)</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
 
   <script>
-    // 仓库根目录下的Excel文件路径，无需修改
-    const excelFilePath = "./data.xlsx";
+    // 仓库根目录Excel文件路径
+    const excelUrl = "./data.xlsx";
+    let tableData = []; // 全局缓存Excel全部数据
+    const tipDom = document.getElementById("tip");
+    const tableBody = document.getElementById("tableBody");
+    const widthInput = document.getElementById("widthInput");
+    const searchBtn = document.getElementById("searchBtn");
 
-    // 请求并解析XLSX
-    fetch(excelFilePath)
+    // 页面加载读取Excel
+    fetch(excelUrl)
       .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`文件加载失败，请确认仓库根目录存在 data.xlsx`);
-        }
+        if (!resp.ok) throw new Error(`文件加载失败：仓库根目录不存在 data.xlsx`);
         return resp.arrayBuffer();
       })
       .then(buffer => {
-        document.getElementById("loading").textContent = "✅ 数据加载完成";
-        // 解析Excel二进制
         const workbook = XLSX.read(buffer, { type: "array" });
-        // 读取第一个工作表
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
         // 转JSON数组，第一行自动作为表头
-        const tableData = XLSX.utils.sheet_to_json(firstSheet);
-        
-        renderTable(tableData);
+        tableData = XLSX.utils.sheet_to_json(sheet);
+        tipDom.className = "success";
+        tipDom.innerText = "✅ 数据加载完成，请输入宽度查询";
       })
-      .catch(error => {
-        document.getElementById("loading").textContent = "❌ " + error.message;
-        console.error("读取Excel异常：", error);
+      .catch(err => {
+        tipDom.className = "error";
+        tipDom.innerText = "❌ " + err.message;
+        console.error("Excel读取异常：", err);
       });
 
-    // 渲染表格到页面
-    function renderTable(dataList) {
-      const tableDom = document.getElementById("dataTable");
-      if (dataList.length === 0) {
-        tableDom.innerHTML = "<tr><td>表格无数据，请检查data.xlsx内容</td></tr>";
+    // 绑定查询按钮点击事件
+    searchBtn.addEventListener("click", doSearch);
+    // 回车也可查询
+    widthInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") doSearch();
+    });
+
+    // 查询逻辑：根据宽度精确匹配
+    function doSearch() {
+      const inputVal = widthInput.value.trim();
+      tableBody.innerHTML = "";
+
+      // 判断输入是否为空
+      if (!inputVal) {
+        tipDom.className = "error";
+        tipDom.innerText = "请输入窗帘宽度数字（cm）";
+        return;
+      }
+      const targetWidth = Number(inputVal);
+
+      // 筛选匹配宽度的数据
+      const matchList = tableData.filter(item => Number(item["宽度(cm)"]) === targetWidth);
+
+      if (matchList.length === 0) {
+        tipDom.className = "error";
+        tipDom.innerText = `未找到宽度为 ${targetWidth}cm 的对应数据`;
         return;
       }
 
-      // 获取表头字段
-      const headerKeys = Object.keys(dataList[0]);
-      let htmlStr = "<thead><tr>";
-      headerKeys.forEach(key => {
-        htmlStr += `<th>${key}</th>`;
+      // 渲染匹配结果
+      tipDom.className = "success";
+      tipDom.innerText = `共查询到 ${matchList.length} 条匹配数据`;
+      matchList.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row["宽度(cm)"]}</td>
+          <td>${row["孔数"]}</td>
+          <td>${row["孔距(cm)"]}</td>
+          <td>${row["单边边距(cm)"]}</td>
+        `;
+        tableBody.appendChild(tr);
       });
-      htmlStr += "</tr></thead><tbody>";
-
-      // 循环生成数据行
-      dataList.forEach(row => {
-        htmlStr += "<tr>";
-        headerKeys.forEach(key => {
-          htmlStr += `<td>${row[key] ?? ""}</td>`;
-        });
-        htmlStr += "</tr>";
-      });
-      htmlStr += "</tbody>";
-      tableDom.innerHTML = htmlStr;
     }
   </script>
 </body>
