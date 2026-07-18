@@ -1,125 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>如意牌精确打孔计算器（原厂查表版）</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSQ - XLSX数据页面</title>
+  <!-- SheetJS Excel解析CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      padding: 20px;
+      font-family: system-ui, sans-serif;
+    }
+    h2 {
+      margin-bottom: 16px;
+      color: #222;
+    }
+    #loading {
+      font-size: 16px;
+      color: #666;
+      margin: 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f4f8;
+    }
+    tr:nth-child(even) {
+      background-color: #f9fafc;
+    }
+  </style>
 </head>
 <body>
-    <h3>输入窗帘成品宽度 L (厘米 cm)：</h3>
-    <input type="number" id="width" placeholder="例如 280 或 550" style="padding:8px;width:200px;">
-    <button onclick="calc()" style="padding:8px;">计算精准数据</button>
-    
-    <div id="result" style="margin-top:20px;font-size:18px;line-height:1.8;background:#f0f0f0;padding:15px;border-radius:5px;"></div>
+  <h2>表格数据（读取仓库data.xlsx）</h2>
+  <div id="loading">正在加载Excel数据库文件 data.xlsx...</div>
+  <table id="dataTable"></table>
 
-    <script>
-        // ========== 如意牌打孔机原厂标准参数对照表（150~1000cm，纯查表无公式） ==========
-        const holeTable = [
-            { width: 150, holes: 10, space: 15.2, margin: 6.6 },
-            { width: 160, holes: 10, space: 16.3, margin: 6.65 },
-            { width: 170, holes: 12, space: 14.3, margin: 6.35 },
-            { width: 180, holes: 12, space: 15.2, margin: 6.4 },
-            { width: 190, holes: 12, space: 16.1, margin: 6.45 },
-            { width: 200, holes: 12, space: 17, margin: 6.5 },
-            { width: 210, holes: 14, space: 15.2, margin: 6.2 },
-            { width: 220, holes: 14, space: 15.9, margin: 6.65 },
-            { width: 230, holes: 14, space: 16.7, margin: 6.45 },
-            { width: 240, holes: 16, space: 15.1, margin: 6.75 },
-            { width: 250, holes: 16, space: 15.8, margin: 6.5 },
-            { width: 260, holes: 16, space: 16.5, margin: 6.25 },
-            { width: 270, holes: 18, space: 15.1, margin: 6.65 },
-            { width: 280, holes: 18, space: 15.7, margin: 6.55 },
-            { width: 290, holes: 18, space: 16.3, margin: 6.45 },
-            { width: 300, holes: 20, space: 15.1, margin: 6.55 },
-            { width: 310, holes: 20, space: 15.6, margin: 6.8 },
-            { width: 320, holes: 20, space: 16.2, margin: 6.1 },
-            { width: 330, holes: 20, space: 16.7, margin: 6.35 },
-            { width: 340, holes: 22, space: 15.6, margin: 6.2 },
-            { width: 350, holes: 22, space: 16, margin: 7 },
-            { width: 360, holes: 22, space: 16.5, margin: 6.75 },
-            { width: 370, holes: 24, space: 15.5, margin: 6.75 },
-            { width: 380, holes: 24, space: 16, margin: 6 },
-            { width: 390, holes: 24, space: 16.4, margin: 6.4 },
-            { width: 400, holes: 26, space: 15.5, margin: 6.25 },
-            { width: 410, holes: 26, space: 15.9, margin: 6.25 },
-            { width: 420, holes: 26, space: 16.3, margin: 6.25 },
-            { width: 430, holes: 26, space: 16.7, margin: 6.25 },
-            { width: 440, holes: 28, space: 15.8, margin: 6.7 },
-            { width: 450, holes: 28, space: 16.2, margin: 6.3 },
-            { width: 460, holes: 30, space: 15.4, margin: 6.7 },
-            { width: 470, holes: 30, space: 15.8, margin: 5.9 },
-            { width: 480, holes: 30, space: 16.1, margin: 6.55 },
-            { width: 490, holes: 32, space: 15.4, margin: 6.3 },
-            { width: 500, holes: 32, space: 15.7, margin: 6.65 },
-            { width: 510, holes: 32, space: 16, margin: 7 },
-            { width: 520, holes: 32, space: 16.4, margin: 5.8 },
-            { width: 530, holes: 34, space: 15.7, margin: 5.95 },
-            { width: 540, holes: 34, space: 16, margin: 6 },
-            { width: 550, holes: 34, space: 16.3, margin: 6.05 },
-            { width: 560, holes: 36, space: 15.6, margin: 7 },
-            { width: 570, holes: 36, space: 15.9, margin: 6.75 },
-            { width: 580, holes: 36, space: 16.2, margin: 6.5 },
-            { width: 590, holes: 38, space: 15.6, margin: 6.4 },
-            { width: 600, holes: 38, space: 15.9, margin: 5.85 },
-            { width: 610, holes: 38, space: 16.1, margin: 7.15 },
-            { width: 620, holes: 38, space: 16.4, margin: 6.6 },
-            { width: 630, holes: 40, space: 15.8, margin: 6.9 },
-            { width: 640, holes: 40, space: 16.1, margin: 6.05 },
-            { width: 650, holes: 40, space: 16.3, margin: 7.15 },
-            { width: 660, holes: 42, space: 15.8, margin: 6.1 },
-            { width: 670, holes: 42, space: 16, margin: 7 },
-            { width: 680, holes: 44, space: 15.5, margin: 6.75 },
-            { width: 690, holes: 42, space: 16.5, margin: 6.75 },
-            { width: 700, holes: 44, space: 16, margin: 6 },
-            { width: 710, holes: 44, space: 16.2, margin: 6.7 },
-            { width: 720, holes: 46, space: 15.7, margin: 6.75 },
-            { width: 730, holes: 46, space: 15.9, margin: 7.25 },
-            { width: 740, holes: 46, space: 16.2, margin: 5.5 },
-            { width: 750, holes: 48, space: 15.7, margin: 6.05 },
-            { width: 760, holes: 48, space: 15.9, margin: 6.35 },
-            { width: 770, holes: 48, space: 16.1, margin: 6.65 },
-            { width: 780, holes: 48, space: 16.3, margin: 6.95 },
-            { width: 790, holes: 50, space: 15.9, margin: 5.45 },
-            { width: 800, holes: 50, space: 16.1, margin: 5.55 },
-            { width: 810, holes: 50, space: 16.3, margin: 5.65 },
-            { width: 820, holes: 52, space: 15.8, margin: 7.1 },
-            { width: 830, holes: 52, space: 16, margin: 7 },
-            { width: 840, holes: 52, space: 16.2, margin: 6.9 },
-            { width: 850, holes: 54, space: 15.8, margin: 6.3 },
-            { width: 860, holes: 54, space: 16, margin: 6 },
-            { width: 870, holes: 54, space: 16.2, margin: 5.7 },
-            { width: 880, holes: 56, space: 15.8, margin: 5.5 },
-            { width: 890, holes: 56, space: 15.9, margin: 7.75 },
-            { width: 900, holes: 56, space: 16.1, margin: 7.25 },
-            { width: 910, holes: 56, space: 16.3, margin: 6.75 },
-            { width: 920, holes: 58, space: 15.9, margin: 6.85 },
-            { width: 930, holes: 58, space: 16.1, margin: 6.15 },
-            { width: 940, holes: 60, space: 15.7, margin: 6.85 },
-            { width: 950, holes: 60, space: 15.9, margin: 5.95 },
-            { width: 960, holes: 58, space: 16.6, margin: 6.9 },
-            { width: 970, holes: 62, space: 15.7, margin: 6.15 },
-            { width: 980, holes: 60, space: 16.4, margin: 6.2 },
-            { width: 990, holes: 62, space: 16, margin: 7 },
-            { width: 1000, holes: 62, space: 16.2, margin: 5.9 }
-        ];
+  <script>
+    // 仓库根目录下的Excel文件路径，无需修改
+    const excelFilePath = "./data.xlsx";
 
-        function calc() {
-            let L = parseFloat(document.getElementById('width').value);
-            if (!L || L < 150 || L > 1000) { 
-                alert("请输入150~1000之间的成品宽度数值！"); 
-                return; 
-            }
-            
-            // 匹配规则：找到大于等于输入宽度的最小标准档位（就高不就低）
-            let matchItem = holeTable.find(item => item.width >= L);
-            if (!matchItem) matchItem = holeTable[holeTable.length - 1];
-
-            document.getElementById('result').innerHTML = 
-                `<b>✅ 如意牌原厂查表结果（输入宽度 ${L} cm）：</b><br><br>
-                 📌 打孔总数：<b style="color:red;font-size:24px;">${matchItem.holes}</b> 个 <br>
-                 📏 相邻孔距：<b style="color:red;font-size:24px;">${matchItem.space}</b> cm <br>
-                 📐 单边边距：<b style="color:red;font-size:24px;">${matchItem.margin}</b> cm <br><br>
-                 <span style="font-size:14px;color:gray;">对应原厂标准档位：成品宽度 ${matchItem.width} cm</span>`;
+    // 请求并解析XLSX
+    fetch(excelFilePath)
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`文件加载失败，请确认仓库根目录存在 data.xlsx`);
         }
-    </script>
+        return resp.arrayBuffer();
+      })
+      .then(buffer => {
+        document.getElementById("loading").textContent = "✅ 数据加载完成";
+        // 解析Excel二进制
+        const workbook = XLSX.read(buffer, { type: "array" });
+        // 读取第一个工作表
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        // 转JSON数组，第一行自动作为表头
+        const tableData = XLSX.utils.sheet_to_json(firstSheet);
+        
+        renderTable(tableData);
+      })
+      .catch(error => {
+        document.getElementById("loading").textContent = "❌ " + error.message;
+        console.error("读取Excel异常：", error);
+      });
+
+    // 渲染表格到页面
+    function renderTable(dataList) {
+      const tableDom = document.getElementById("dataTable");
+      if (dataList.length === 0) {
+        tableDom.innerHTML = "<tr><td>表格无数据，请检查data.xlsx内容</td></tr>";
+        return;
+      }
+
+      // 获取表头字段
+      const headerKeys = Object.keys(dataList[0]);
+      let htmlStr = "<thead><tr>";
+      headerKeys.forEach(key => {
+        htmlStr += `<th>${key}</th>`;
+      });
+      htmlStr += "</tr></thead><tbody>";
+
+      // 循环生成数据行
+      dataList.forEach(row => {
+        htmlStr += "<tr>";
+        headerKeys.forEach(key => {
+          htmlStr += `<td>${row[key] ?? ""}</td>`;
+        });
+        htmlStr += "</tr>";
+      });
+      htmlStr += "</tbody>";
+      tableDom.innerHTML = htmlStr;
+    }
+  </script>
 </body>
 </html>
