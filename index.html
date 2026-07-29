@@ -132,9 +132,10 @@
       if (e.key === "Enter") doSearch();
     });
 
-    // 格式化数字为1位小数工具函数
-    function formatOneNum(val) {
+    // 格式化函数：四舍五入保留1位小数
+    function formatOneDecimal(val) {
       const num = Number(val);
+      // toFixed(1) 原生四舍五入
       return num.toFixed(1);
     }
 
@@ -160,20 +161,21 @@
         return;
       }
 
-      // 渲染匹配结果，孔距、单边边距保留1位小数
+      // 渲染匹配结果，孔距、单边边距统一四舍五入保留1位小数
       tipDom.className = "success";
       tipDom.innerText = `共查询到 ${matchList.length} 条匹配数据`;
       matchList.forEach(row => {
-        const tr = document.createElement("tr");
         const w = Number(row["宽度(cm)"]);
-        const count = Number(row["孔数"]);
-        const dist = formatOneNum(row["孔距(cm)"]);
-        const margin = formatOneNum(row["单边边距(cm)"]);
+        const holeCount = Number(row["孔数"]);
+        const holeDist = formatOneDecimal(row["孔距(cm)"]);
+        const sideMargin = formatOneDecimal(row["单边边距(cm)"]);
+        
+        const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${w}</td>
-          <td>${count}</td>
-          <td>${dist}</td>
-          <td>${margin}</td>
+          <td>${holeCount}</td>
+          <td>${holeDist}</td>
+          <td>${sideMargin}</td>
         `;
         tableBody.appendChild(tr);
       });
