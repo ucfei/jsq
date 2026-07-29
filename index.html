@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>窗帘孔距查询表</title>
+  <title>窗帘孔距查询+逆向计算器</title>
   <!-- Excel解析库CDN -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -14,7 +14,7 @@
       font-family: "Microsoft Yahei", sans-serif;
     }
     body {
-      max-width: 900px;
+      max-width: 950px;
       margin: 30px auto;
       padding: 0 15px;
     }
@@ -24,29 +24,39 @@
       margin-bottom: 25px;
       font-size: 24px;
     }
-    .search-box {
+    h2 {
+      font-size: 18px;
+      margin:20px 0 10px;
+      color:#333;
+      border-left:4px #2563eb solid;
+      padding-left:8px;
+    }
+    .search-box, .calc-box {
       display: flex;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
-    #widthInput {
-      flex: 1;
+    input[type="number"] {
       padding: 12px 15px;
       font-size: 16px;
       border: 1px solid #ccc;
       border-radius: 6px;
       outline: none;
+      min-width:140px;
     }
-    #searchBtn {
-      padding: 12px 24px;
-      background: #2563eb;
-      color: #fff;
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
       border: none;
       border-radius: 6px;
-      font-size: 16px;
       cursor: pointer;
     }
-    #searchBtn:hover {
+    .btn-blue {
+      background: #2563eb;
+      color: #fff;
+    }
+    .btn-blue:hover {
       background: #1d4ed8;
     }
     #tip {
@@ -59,6 +69,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top:10px;
     }
     th, td {
       border: 1px solid #ddd;
@@ -69,21 +80,24 @@
     th {
       background-color: #eff6ff;
     }
+    .result-calc{
+      margin-top:8px;
+      padding:10px;
+      background:#f0f7ff;
+      border-radius:6px;
+    }
   </style>
 </head>
 <body>
-  <h1>窗帘孔距完整对照表查询</h1>
+  <h1>窗帘孔距对照表 + 逆向计算器</h1>
 
-  <!-- 查询输入区域 -->
+  <!-- 原有查表功能 -->
+  <h2>一、宽度查表（读取Excel标准数据）</h2>
   <div class="search-box">
-    <input type="number" id="widthInput" placeholder="请输入窗帘宽度（单位cm，例如180）">
-    <button id="searchBtn">查询孔距</button>
+    <input type="number" id="widthInput" placeholder="输入窗帘宽度(cm)">
+    <button id="searchBtn" class="btn-blue">查表查询</button>
   </div>
-
-  <!-- 提示信息：加载/成功/报错 -->
   <div id="tip" class="error">正在加载数据库 打孔孔距.xlsx...</div>
-
-  <!-- 查询结果表格 -->
   <table id="resultTable">
     <thead>
       <tr>
@@ -96,93 +110,142 @@
     <tbody id="tableBody"></tbody>
   </table>
 
+  <!-- 逆向计算1：宽度+孔数 → 计算孔距（默认单边7cm） -->
+  <h2>二、逆向计算1：已知宽度+孔数，求孔距（单边默认7cm）</h2>
+  <div class="calc-box">
+    <input type="number" id="calcW1" placeholder="总宽度cm">
+    <input type="number" id="calcN1" placeholder="打孔数量">
+    <button id="calcBtn1" class="btn-blue">开始计算</button>
+  </div>
+  <div class="result-calc" id="calcRes1"></div>
+
+  <!-- 逆向计算2：宽度+孔距 → 计算孔数（单边默认7cm） -->
+  <h2>三、逆向计算2：已知宽度+孔距，求孔数（单边默认7cm）</h2>
+  <div class="calc-box">
+    <input type="number" id="calcW2" placeholder="总宽度cm">
+    <input type="number" id="calcD2" placeholder="孔距cm">
+    <button id="calcBtn2" class="btn-blue">开始计算</button>
+  </div>
+  <div class="result-calc" id="calcRes2"></div>
+
   <script>
-    // 仓库根目录Excel文件路径
+    // 仓库Excel路径
     const excelUrl = "./打孔孔距.xlsx";
-    let tableData = []; // 全局缓存Excel全部数据
+    let tableData = [];
     const tipDom = document.getElementById("tip");
     const tableBody = document.getElementById("tableBody");
     const widthInput = document.getElementById("widthInput");
     const searchBtn = document.getElementById("searchBtn");
 
-    // 页面加载读取Excel
+    // 固定单边标准边距 7cm
+    const STANDARD_SIDE = 7;
+
+    // 四舍五入保留1位小数工具
+    function formatOneDecimal(val) {
+      const num = Number(val);
+      const rounded = Math.round(num * 10) / 10;
+      return rounded.toFixed(1);
+    }
+
+    // 加载Excel
     fetch(excelUrl)
       .then(resp => {
-        if (!resp.ok) throw new Error(`文件加载失败：仓库根目录不存在 打孔孔距.xlsx`);
+        if (!resp.ok) throw new Error(`文件加载失败：仓库根目录缺少打孔孔距.xlsx`);
         return resp.arrayBuffer();
       })
       .then(buffer => {
         const workbook = XLSX.read(buffer, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        // 转JSON数组，第一行自动作为表头
         tableData = XLSX.utils.sheet_to_json(sheet);
         tipDom.className = "success";
-        tipDom.innerText = "✅ 数据加载完成，请输入宽度查询";
+        tipDom.innerText = "✅ 数据加载完成，可查表或逆向计算";
       })
       .catch(err => {
         tipDom.className = "error";
         tipDom.innerText = "❌ " + err.message;
-        console.error("Excel读取异常：", err);
+        console.error(err);
       });
 
-    // 绑定查询按钮点击事件
+    // 查表点击
     searchBtn.addEventListener("click", doSearch);
-    // 回车也可查询
-    widthInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") doSearch();
-    });
-
-    // 【修复】标准数学四舍五入保留1位小数
-    function formatOneDecimal(val) {
-      const num = Number(val);
-      // 放大10倍四舍五入，再缩小
-      const rounded = Math.round(num * 10) / 10;
-      // 强制输出一位小数（如16 → 16.0）
-      return rounded.toFixed(1);
-    }
-
-    // 查询逻辑：根据宽度精确匹配
+    widthInput.addEventListener("keydown", e => e.key === "Enter" && doSearch());
     function doSearch() {
-      const inputVal = widthInput.value.trim();
+      const inputVal = width.value.trim();
       tableBody.innerHTML = "";
-
-      // 判断输入是否为空
       if (!inputVal) {
         tipDom.className = "error";
-        tipDom.innerText = "请输入窗帘宽度数字（cm）";
+        tipDom.innerText = "请输入宽度数字";
         return;
       }
       const targetWidth = Number(inputVal);
-
-      // 筛选匹配宽度的数据
       const matchList = tableData.filter(item => Number(item["宽度(cm)"]) === targetWidth);
-
       if (matchList.length === 0) {
         tipDom.className = "error";
-        tipDom.innerText = `未找到宽度为 ${targetWidth}cm 的对应数据`;
+        tipDom.innerText = `无${targetWidth}cm标准数据，可使用下方计算器自定义`;
         return;
       }
-
-      // 渲染匹配结果，修正字段名：单边边距(cm)
       tipDom.className = "success";
-      tipDom.innerText = `共查询到 ${matchList.length} 条匹配数据`;
+      tipDom.innerText = `匹配${matchList}条标准数据`;
       matchList.forEach(row => {
-        const w = Number(row["宽度(cm)"]);
-        const holeCount = Number(row["孔数"]);
-        const holeDist = formatOneDecimal(row["孔距(cm)"]);
-        // 修复这里，表头完整名称：单边边距(cm)
-        const sideMargin = formatOneDecimal(row["单边边距(cm)"]);
-        
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${w}</td>
-          <td>${holeCount}</td>
-          <td>${holeDist}</td>
-          <td>${sideMargin}</td>
+          <td>${row["宽度(cm)"]}</td>
+          <td>${row["孔数"]}</td>
+          <td>${formatOneDecimal(row["孔距(cm)"])}</td>
+          <td>${formatOneDecimal(row["单边边距(cm)"])}</td>
         `;
         tableBody.appendChild(tr);
-      });
+      })
     }
+
+    // ========== 逆向计算1：宽度+孔数 求孔距 ==========
+    const calcW1 = document.getElementById("calcW1");
+    const calcN1 = document.getElementById("calcN1");
+    const calcBtn1 = document.getElementById("calcBtn1");
+    const calcRes1 = document.getElementById("calcRes1");
+    calcBtn1.addEventListener("click", () => {
+      const W = Number(calcW1.value);
+      const N = Number(calcN1.value);
+      if (!W || !N || N <= 1) {
+        calcRes1.innerHTML = `<span style="color:#dc2626">错误：宽度/孔数必须大于1</span>`;
+        return;
+      }
+      // 公式：孔距 = (总宽 - 2*单边) / (孔数-1)
+      const dist = (W - 2 * STANDARD_SIDE) / (N - 1);
+      calcRes1.innerHTML = `
+        <strong>计算结果：</strong><br>
+        总宽度：${W}cm，打孔${N}个<br>
+        固定单边边距：${STANDARD_SIDE}.0cm<br>
+        计算孔距：${formatOneDecimal(dist)}cm
+      `;
+    })
+
+    // ========== 逆向计算2：宽度+孔距 求孔数 ==========
+    const calcW2 = document.getElementById("calcW2");
+    const calcD2 = document.getElementById("calcD2");
+    const calcBtn2 = document.getElementById("calcBtn2");
+    const calcRes2 = document.getElementById("calcRes2");
+    calcBtn2.addEventListener("click", () => {
+      const W = Number(calcW2.value);
+      const D = Number(calcD2);
+      if (!W || !D || D <= 0) {
+        calcRes2.innerHTML = `<span style="color:#dc2626">错误：宽度、孔距必须大于0</span>`;
+        return;
+      }
+      // 推导公式：孔数 = (总宽 - 2*单边) / 孔距 + 1
+      let nRaw = (W - 2 * STANDARD_SIDE) / D + 1;
+      // 孔数必须整数，向上取整（窗帘孔只能多不能少）
+      const holeNum = Math.ceil(nRaw);
+      // 取整后重新反推真实孔距（匹配整数孔）
+      const realDist = (W - 2 * STANDARD_SIDE) / (holeNum - 1);
+      calcRes2.innerHTML = `
+        <strong>计算结果：</strong><br>
+        总宽度：${W}cm，目标孔距${D}cm<br>
+        固定单边边距：${STANDARD_SIDE}.0cm<br>
+        理论孔数：${formatOneDecimal(nRaw)} → 实际取整孔数：${holeNum}个<br>
+        匹配整数孔后的实际孔距：${formatOneDecimal(realDist)}cm
+      `;
+    })
   </script>
 </body>
 </html>
