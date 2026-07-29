@@ -132,11 +132,13 @@
       if (e.key === "Enter") doSearch();
     });
 
-    // 格式化函数：四舍五入保留1位小数
+    // 【修复】标准数学四舍五入保留1位小数
     function formatOneDecimal(val) {
       const num = Number(val);
-      // toFixed(1) 原生四舍五入
-      return num.toFixed(1);
+      // 放大10倍四舍五入，再缩小
+      const rounded = Math.round(num * 10) / 10;
+      // 强制输出一位小数（如16 → 16.0）
+      return rounded.toFixed(1);
     }
 
     // 查询逻辑：根据宽度精确匹配
@@ -161,14 +163,14 @@
         return;
       }
 
-      // 渲染匹配结果，孔距、单边边距统一四舍五入保留1位小数
+      // 渲染匹配结果，孔距、单边边距统一标准四舍五入保留1位小数
       tipDom.className = "success";
       tipDom.innerText = `共查询到 ${matchList.length} 条匹配数据`;
       matchList.forEach(row => {
         const w = Number(row["宽度(cm)"]);
         const holeCount = Number(row["孔数"]);
         const holeDist = formatOneDecimal(row["孔距(cm)"]);
-        const sideMargin = formatOneDecimal(row["单边边距(cm)"]);
+        const sideMargin = formatOneDecimal(row["单边边距"]);
         
         const tr = document.createElement("tr");
         tr.innerHTML = `
