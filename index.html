@@ -132,6 +132,12 @@
       if (e.key === "Enter") doSearch();
     });
 
+    // 格式化数字为1位小数工具函数
+    function formatOneNum(val) {
+      const num = Number(val);
+      return num.toFixed(1);
+    }
+
     // 查询逻辑：根据宽度精确匹配
     function doSearch() {
       const inputVal = widthInput.value.trim();
@@ -154,16 +160,20 @@
         return;
       }
 
-      // 渲染匹配结果
+      // 渲染匹配结果，孔距、单边边距保留1位小数
       tipDom.className = "success";
       tipDom.innerText = `共查询到 ${matchList.length} 条匹配数据`;
       matchList.forEach(row => {
         const tr = document.createElement("tr");
+        const w = Number(row["宽度(cm)"]);
+        const count = Number(row["孔数"]);
+        const dist = formatOneNum(row["孔距(cm)"]);
+        const margin = formatOneNum(row["单边边距(cm)"]);
         tr.innerHTML = `
-          <td>${row["宽度(cm)"]}</td>
-          <td>${row["孔数"]}</td>
-          <td>${row["孔距(cm)"]}</td>
-          <td>${row["单边边距(cm)"]}</td>
+          <td>${w}</td>
+          <td>${count}</td>
+          <td>${dist}</td>
+          <td>${margin}</td>
         `;
         tableBody.appendChild(tr);
       });
