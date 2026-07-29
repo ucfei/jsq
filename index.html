@@ -81,7 +81,7 @@
   </div>
 
   <!-- 提示信息：加载/成功/报错 -->
-  <div id="tip" class="error">正在加载数据库 data.xlsx...</div>
+  <div id="tip" class="error">正在加载数据库 打孔孔距.xlsx...</div>
 
   <!-- 查询结果表格 -->
   <table id="resultTable">
@@ -98,7 +98,7 @@
 
   <script>
     // 仓库根目录Excel文件路径
-    const excelUrl = "./data.xlsx";
+    const excelUrl = "./打孔孔距.xlsx";
     let tableData = []; // 全局缓存Excel全部数据
     const tipDom = document.getElementById("tip");
     const tableBody = document.getElementById("tableBody");
@@ -108,7 +108,7 @@
     // 页面加载读取Excel
     fetch(excelUrl)
       .then(resp => {
-        if (!resp.ok) throw new Error(`文件加载失败：仓库根目录不存在 data.xlsx`);
+        if (!resp.ok) throw new Error(`文件加载失败：仓库根目录不存在 打孔孔距.xlsx`);
         return resp.arrayBuffer();
       })
       .then(buffer => {
