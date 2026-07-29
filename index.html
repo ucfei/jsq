@@ -163,14 +163,15 @@
         return;
       }
 
-      // 渲染匹配结果，孔距、单边边距统一标准四舍五入保留1位小数
+      // 渲染匹配结果，修正字段名：单边边距(cm)
       tipDom.className = "success";
       tipDom.innerText = `共查询到 ${matchList.length} 条匹配数据`;
       matchList.forEach(row => {
         const w = Number(row["宽度(cm)"]);
         const holeCount = Number(row["孔数"]);
         const holeDist = formatOneDecimal(row["孔距(cm)"]);
-        const sideMargin = formatOneDecimal(row["单边边距"]);
+        // 修复这里，表头完整名称：单边边距(cm)
+        const sideMargin = formatOneDecimal(row["单边边距(cm)"]);
         
         const tr = document.createElement("tr");
         tr.innerHTML = `
