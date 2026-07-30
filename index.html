@@ -17,11 +17,29 @@
       margin: 30px auto;
       padding: 0 15px;
     }
-    h1 {
-      text-align: center;
-      color: #222;
+    .header-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
       margin-bottom: 25px;
+    }
+    h1 {
+      color: #222;
       font-size: 24px;
+    }
+    .sys-calc-btn {
+      padding: 8px 14px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      background-color: #6366f1;
+      color: #fff;
+      cursor: pointer;
+    }
+    .sys-calc-btn:hover {
+      background-color: #4f46e5;
     }
     h2 {
       font-size: 18px;
@@ -89,7 +107,10 @@
   </style>
 </head>
 <body>
-  <h1>窗帘孔距对照表 + 逆向计算器</h1>
+  <div class="header-wrap">
+    <h1>窗帘孔距对照表 + 逆向计算器</h1>
+    <button class="sys-calc-btn" id="openSysCalc">打开系统自带计算器</button>
+  </div>
 
   <h2>一、宽度查表（读取标准数据表）</h2>
   <div class="search-box">
@@ -148,6 +169,36 @@
       const rounded = Math.round(num * 10) / 10;
       return rounded.toFixed(1);
     }
+
+    // 打开系统计算器逻辑
+    const openSysCalcBtn = document.getElementById('openSysCalc');
+    openSysCalcBtn.addEventListener('click', async () => {
+      const ua = navigator.userAgent.toLowerCase();
+      const isMobile = /android|iphone|ipad|ipod|mobile/.test(ua);
+      // 判断移动端直接提示
+      if (isMobile) {
+        alert('当前为手机设备，无法调用电脑系统计算器，请使用手机自带计算器');
+        return;
+      }
+      // Windows系统调用计算器
+      if (ua.includes('win')) {
+        try {
+          // 打开计算器协议链接
+          window.open('ms-calculator://', '_self');
+        } catch (e) {
+          alert('调用系统计算器失败，请手动在开始菜单打开计算器程序');
+        }
+      } else if (ua.includes('mac')) {
+        // Mac 调用计算器
+        try {
+          window.open('calculator://', '_self');
+        } catch (e) {
+          alert('Mac系统唤起计算器失败，请手动启动“计算器”App');
+        }
+      } else {
+        alert('暂不支持当前操作系统唤起系统计算器');
+      }
+    });
 
     // 加载Excel表格
     fetch(excelUrl)
@@ -257,7 +308,7 @@
       `;
     })
 
-    // ========== 新增计算3：孔距 + 孔数 求总宽度 ==========
+    // 计算3：孔距 + 孔数 求总宽度
     const calcD3 = document.getElementById("calcD3");
     const calcN3 = document.getElementById("calcN3");
     const calcBtn3 = document.getElementById("calcBtn3");
